@@ -29,7 +29,10 @@ func newTestApp(t *testing.T) (*App, *fakePlayer, *library.Store, *progress.Stor
 	_, player, lib, _ := newTestController(t)
 	prog := mustOpenProgress(t)
 	ctrl := NewWithPrefs(fyneApp, prefs, lib, prog, player, t.TempDir())
-	app := NewApp(fyneApp, ctrl)
+	// The background ticker is disabled in tests: Fyne's test driver runs
+	// fyne.Do inline, which would let it touch widgets concurrently with the
+	// test goroutine. Tests call the refresh helpers directly.
+	app := NewAppWithOptions(fyneApp, ctrl, Options{DisableTicker: true})
 	return app, player, lib, prog
 }
 

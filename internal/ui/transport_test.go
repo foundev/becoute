@@ -7,6 +7,7 @@ import (
 	fynetest "fyne.io/fyne/v2/test"
 
 	"github.com/foundev/becoute/internal/audio"
+	"github.com/foundev/becoute/internal/library"
 )
 
 // TestClickingLibraryRowLoadsBook walks the exact path a user takes: pick a
@@ -111,4 +112,51 @@ func TestTransportBarSeek(t *testing.T) {
 	if got := player.Position().Elapsed; got < 20*time.Second || got > 30*time.Second {
 		t.Fatalf("bar seek did not apply: %v", got)
 	}
+}
+
+func TestTransportButtonsDoNotDependOnTheEventLoop(t *testing.T) {
+	// Regression test: button handlers must update widgets directly rather than
+	// going through fyne.Do. fyne.Do drops the function when no event loop is
+	// running, which is the case in tests, so wrapping handlers in it made the
+	// transport buttons silently do nothing.
+	app, player, lib, _ := newTestApp(t)
+	addTestBook(t, lib, "Alpha", 3)
+	app.refreshLibrary()
+	app.libraryList.Select(0)
+
+	player.SetTrack(1, 0)
+	fynetest.Tap(app.barPrev)
+	if got := player.Position().Track; got != 0 {
+		t.Fatalf("prev did nothing: track = %d", got)
+	}
+
+	fynetest.Tap(app.barNext)
+	if got := player.Position().Track; got != 1 {
+		t.Fatalf("next did nothing: track = %d", got)
+	}
+}
+
+func TestNowPlayingButtonsWork(t *testing.T) {
+	app, player, lib, _ := newTestApp(t)
+	addTestBook(t, lib, "Alpha", 3)
+	app.openBook(book0(t, lib))
+
+	fynetest.Tap(app.nextButton)
+	if got := player.Position().Track; got != 1 {
+		t.Fatalf("now-playing next did nothing: track = %d", got)
+	}
+	fynetest.Tap(app.prevButton)
+	if got := player.Position().Track; got != 0 {
+		t.Fatalf("now-playing prev did nothing: track = %d", got)
+	}
+}
+
+// book0 returns the first book in the library.
+func book0(t *testing.T, lib *library.Store) *library.Book {
+	t.Helper()
+	books := lib.Books()
+	if len(books) == 0 {
+		t.Fatal("no books in library")
+	}
+	return books[0]
 }

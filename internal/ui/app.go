@@ -65,16 +65,38 @@ type App struct {
 	barElapsed *widget.Label
 	barTotal   *widget.Label
 
+	// noTicker records that the background refresh loop was disabled.
+	noTicker bool
+
 	stopTicker chan struct{}
 	suppress   bool
 }
 
 // NewApp builds the window and starts the UI update loop.
+// Options configures the application window.
+type Options struct {
+	// DisableTicker stops the background refresh loop.
+	//
+	// Tests set this because Fyne's test driver runs fyne.Do inline on the
+	// calling goroutine, so the ticker would reach into widgets at the same
+	// time as the test goroutine. The real drivers marshal fyne.Do onto the
+	// event loop, so the loop is safe in normal use. Tests drive the same
+	// refresh functions directly instead.
+	DisableTicker bool
+}
+
+// NewApp builds the window with the default options.
 func NewApp(fyneApp fyne.App, ctrl *Controller) *App {
+	return NewAppWithOptions(fyneApp, ctrl, Options{})
+}
+
+// NewAppWithOptions builds the window with explicit options.
+func NewAppWithOptions(fyneApp fyne.App, ctrl *Controller, opts Options) *App {
 	a := &App{
 		fyneApp:    fyneApp,
 		ctrl:       ctrl,
 		stopTicker: make(chan struct{}),
+		noTicker:   opts.DisableTicker,
 	}
 	a.win = fyneApp.NewWindow("Becoute")
 	a.win.Resize(fyne.NewSize(1100, 720))
@@ -93,15 +115,33 @@ func NewApp(fyneApp fyne.App, ctrl *Controller) *App {
 	a.refreshLibrary()
 	a.refreshNowPlaying()
 	a.refreshTransportBar()
-	a.startTicker()
+	if !a.noTicker {
+		a.startTicker()
+	}
 	return a
 }
 
 // Show displays the window.
 func (a *App) Show() { a.win.Show() }
 
+// uiThread hands fn to the Fyne event loop.
+//
+// This is only for the background refresh goroutine: widget updates must happen
+// on the event loop, and fyne.Do arranges that for the real drivers. Code that
+// already runs on the event loop, such as button handlers, must call its
+// updates directly, because fyne.Do drops the function outright when no event
+// loop is running, which is the case under the test driver.
+func (a *App) uiThread(fn func()) {
+	fyne.Do(fn)
+}
+
 // shutdown persists progress and releases audio resources.
 func (a *App) shutdown() {
+	if a.noTicker {
+		a.ctrl.Save()
+		a.ctrl.Player().Close()
+		return
+	}
 	close(a.stopTicker)
 	a.ctrl.Save()
 	a.ctrl.Player().Close()
@@ -119,13 +159,14 @@ func (a *App) startTicker() {
 				return
 			case <-a.ctrl.Player().Drained():
 				a.ctrl.HandleDrained()
-				fyne.Do(func() {
+				a.uiThread(func() {
 					a.refreshNowPlaying()
 					a.refreshLibrary()
+					a.refreshTransportBar()
 				})
 			case <-ticker.C:
 				a.ctrl.SaveThrottled()
-				fyne.Do(func() {
+				a.uiThread(func() {
 					a.updateTransport()
 					a.refreshTransportBar()
 				})
