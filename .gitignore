@@ -1,0 +1,60 @@
+# --- Compiled binaries / build output ---
+/becoute
+/becoute.exe
+/dist/
+/build/
+/bin/
+cmd/becoute/becoute
+cmd/becoute/becoute.exe
+
+# Fyne packaging output
+*.app/
+*.apk
+*.aab
+*.ipa
+*.dmg
+*.pkg
+*.msi
+*.AppImage
+*.snap
+FyneApp.toml.bak
+
+# --- Go ---
+*.test
+*.out
+coverage.txt
+coverage.html
+profile.out
+*.prof
+/vendor/
+
+# --- Local runtime data (library, progress, logs) ---
+/data/
+/.becoute/
+
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+
+# --- macOS ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+
+# --- Windows ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- Editors / IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.code-workspace

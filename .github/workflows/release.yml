@@ -1,0 +1,90 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GOTOOLCHAIN: local
+  APP_ID: io.github.foundev.becoute
+
+jobs:
+  build:
+    name: Build (${{ matrix.goos }}/${{ matrix.goarch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-latest,   goos: darwin,  goarch: arm64 }
+          - { runner: macos-latest,   goos: darwin,  goarch: amd64 }
+          - { runner: ubuntu-latest,  goos: linux,   goarch: amd64 }
+          - { runner: ubuntu-latest,  goos: linux,   goarch: arm64 }
+          - { runner: windows-latest, goos: windows, goarch: amd64 }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc pkg-config libgl1-mesa-dev xorg-dev
+
+      - name: Install fyne CLI
+        run: go install fyne.io/tools/cmd/fyne@latest
+
+      - name: Package
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "1"
+        run: |
+          set -euo pipefail
+          fyne package -os "$GOOS" -name Becoute -appID "$APP_ID" -release ./cmd/becoute
+
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          shopt -s nullglob
+          for f in *.dmg *.zip *.tar.xz *.exe *.apk *.AppImage; do
+            mv "$f" dist/
+          done
+          ls -la dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: becoute-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

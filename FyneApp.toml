@@ -1,0 +1,9 @@
+# Fyne application metadata, used by `fyne package` and `fyne release`.
+Website = "https://github.com/foundev/becoute"
+
+[Details]
+Icon = "Icon.png"
+Name = "Becoute"
+ID = "io.github.foundev.becoute"
+Version = "0.1.0"
+Build = 1
