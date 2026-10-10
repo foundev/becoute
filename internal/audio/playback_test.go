@@ -24,6 +24,9 @@ func writePlaybackMP3(t *testing.T, frames int) string {
 }
 
 func TestRealPlaybackAdvancesPosition(t *testing.T) {
+	if RaceDetectorEnabled() {
+		t.Skip("skipping real audio under -race: the oto driver's own startup races (see RaceDetectorEnabled)")
+	}
 	if err := InitSpeaker(); err != nil {
 		t.Skipf("no audio device: %v", err)
 	}

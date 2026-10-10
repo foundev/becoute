@@ -45,3 +45,12 @@ func ProbeDuration(path string) (time.Duration, error) {
 	samples := length / bytesPerFrame
 	return time.Second * time.Duration(samples) / time.Duration(d.SampleRate()), nil
 }
+
+// RaceDetectorEnabled reports whether the binary was built with -race.
+//
+// It exists so tests that open a real audio device can skip under the race
+// detector: the oto driver used for playback spawns its audio thread during
+// context creation and writes to a variable the caller reads back, which the
+// race detector reports as a race inside that library rather than in Becoute.
+// See https://github.com/ebitengine/oto for the upstream driver.
+func RaceDetectorEnabled() bool { return raceEnabled }

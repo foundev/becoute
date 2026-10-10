@@ -92,9 +92,11 @@ go test ./...
 go test -race ./...
 ```
 
-Two integration tests drive real audio output and are skipped when no audio
-device is available (for example inside a sandbox). Run them directly to
-exercise playback end to end:
+Two integration tests drive real audio output. They skip themselves when no
+audio device is available (for example inside a sandbox) and under `-race`,
+because the `oto` audio driver used for playback races with itself while
+starting up, which the detector reports inside that library rather than in
+Becoute. Run them without `-race` to exercise playback end to end:
 
 ```sh
 go test ./internal/audio/ -run TestRealPlayback -v

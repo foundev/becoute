@@ -34,9 +34,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          # Fyne needs OpenGL/X11 (and Wayland) headers; oto needs ALSA to
+          # build its Linux audio driver.
           sudo apt-get install -y --no-install-recommends \
             gcc pkg-config \
-            libgl1-mesa-dev xorg-dev
+            libgl1-mesa-dev xorg-dev \
+            libwayland-dev libxkbcommon-dev \
+            libasound2-dev
 
       - name: Verify formatting
         if: runner.os == 'Linux'
@@ -53,6 +57,15 @@ jobs:
 
       - name: Test
         run: go test -race ./...
+
+      # The real-audio tests open a device, which the race detector reports as
+      # a race inside the oto driver rather than in Becoute, so they skip under
+      # -race. Run them once without it to cover actual playback. The test
+      # skips itself when the runner has no audio device.
+      - name: Test (real audio playback)
+        run: go test ./internal/audio/ ./internal/ui/ -run 'TestRealPlayback|TestRealPlayerDrivesUI' -v
+        env:
+          BECOUTE_AUDIO_IT: "1"
 
       - name: Build
         run: go build ./...

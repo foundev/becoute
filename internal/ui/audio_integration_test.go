@@ -19,6 +19,9 @@ func TestRealPlayerDrivesUI(t *testing.T) {
 	if os.Getenv("BECOUTE_AUDIO_IT") == "" {
 		t.Skip("set BECOUTE_AUDIO_IT=1 to run the real audio integration test")
 	}
+	if audio.RaceDetectorEnabled() {
+		t.Skip("skipping real audio under -race: the oto driver's own startup races (see RaceDetectorEnabled)")
+	}
 	if err := audio.InitSpeaker(); err != nil {
 		t.Skipf("no audio device: %v", err)
 	}

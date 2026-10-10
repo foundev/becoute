@@ -38,8 +38,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
+          # Fyne needs OpenGL/X11 (and Wayland) headers; oto needs ALSA to
+          # build its Linux audio driver.
           sudo apt-get install -y --no-install-recommends \
-            gcc pkg-config libgl1-mesa-dev xorg-dev
+            gcc pkg-config \
+            libgl1-mesa-dev xorg-dev \
+            libwayland-dev libxkbcommon-dev \
+            libasound2-dev
 
       - name: Install fyne CLI
         run: go install fyne.io/tools/cmd/fyne@latest
